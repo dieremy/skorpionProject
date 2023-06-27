@@ -143,7 +143,12 @@ void loop()
   {
   // vvvv ----- YOUR AWESOME CODE HERE ----- vvvv //
 
+    // int leftSpeed = recData.speedmotorLeft;
+    // int rightSpeed = recData.speedmotorRight;
 
+    motor1.setSpeed(recLpwm);
+    motor2.setSpeed(recRpwm);
+    motor3.setSpeed(0);
 
   // -------------------------------------------- //
   }

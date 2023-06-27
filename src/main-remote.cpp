@@ -4,14 +4,17 @@
 	#include "esp_wifi.h"
 	#include <WiFi.h>
 	#include <batteryMonitor.h>
+	#include <motorControl.h>
 	#include <ledUtility.h>
 	#include "esp_log.h"
 	#include "mac.h"
 
 	static const char *TAG = "MAIN";
+	
 	//------------ turn on generic serial printing
 
 	#define DEBUG_PRINTS
+
 	//data that will be sent to the receiver
 
 	typedef struct {
@@ -139,45 +142,101 @@
 
 	// vvvv ----- YOUR AWESOME CODE HERE ----- vvvv //
 
-	////////////function map()
-	// map(value, fromLow, fromHigh, toLow, toHigh)
+	// -90 maxval ---- -50 minval  (acc)
+	// -50 maxval ---- 0 minval  (str)
+	// settiamo tutto a 90
+	
+	// int speedAcc = map(accValue, 0, 1023, -512, 512);
+	// int speedStr = map(strValue, 0, 1023, -512, 512);
+  
+	// sentData.speedmotorLeft = speedAcc - speedStr;
+	// sentData.speedmotorRight = speedAcc - speedStr;
 
-	////////////map() parameters
-	// value: the number to map.
-	// fromLow: the lower bound of the value’s current range.
-	// fromHigh: the upper bound of the value’s current range.
-	// toLow: the lower bound of the value’s target range.
-	// toHigh: the upper bound of the value’s target range.
+	// int speedUp = map( accValue, 0, 512, -512, 512 );
+	// int speedDown = map( accValue, 512, 1023, -512, 512 );
+	// int speedLeft = map( strValue, 0, 512, -512, 512 );
+	// int speedRight = map( strValue, 512, 1023, -512, 512 );
 
-	int accellerazione_avanti= map(accValue, 512, 1023, 512, 512);
-	int accellerazione_indietro = map(accValue, 0, 512, -512, -512);
-	int sterzo_destra = map(strValue, 512, 1023, 512, -512);
-	int sterzo_sinistra = map(strValue, 0, 512, -512, 512);
+	// sentData.speedmotorLeft = ((speedUp + speedDown) - (speedLeft + speedRight)); 
+	// sentData.speedmotorRight = ((speedUp + speedDown) - (speedLeft + speedRight));
+	#define UPMIN	462
+	#define UPMAX	0
+	#define DOWNMIN	562
+	#define DOWNMAX	1023
 
-	// constrain(accellerazione, 0, 0);
-	sentData.speedmotorLeft = constrain(accellerazione_avanti + accellerazione_indietro, 512, -512);
-	sentData.speedmotorRight = constrain(accellerazione_avanti + accellerazione_indietro, 512, -512);
-	// sentData.speedmotorRight();
-	// sentData.speedm();
-	// sentData.speedmotorRight();
-	//int	constraintValue = constrain(accellerazione, 0, 0);
+	#define LMIN	462
+	#define LMAX	0
+	#define RMIN	562
+	#define RMAX	1023
 
-	// Serial.print(constraintValue);
-	// Serial.print("\n");
-	// Serial.println(leverValue);
-	// Serial.print("\n");
-	Serial.print(sentData.speedmotorLeft);
-	Serial.print("\n");
-	Serial.print(sentData.speedmotorRight);
+	// condition to manage the drift range
+	// where motors do nothing 
+	if ( accValue > UPMIN && accValue < DOWNMIN && strValue > LMIN && strValue < RMIN )
+	{
+		sentData.speedmotorLeft = 0;
+		sentData.speedmotorRight = 0;
+	}
+	else
+	{
+		if ( accValue <= UPMIN && accValue >= UPMAX ) // up range
+		{
+			if ( strValue <= LMIN && strValue >= LMAX ) // up-left
+			{
+				sentData.speedmotorLeft = -512;
+				sentData.speedmotorRight = 512;
+			}
+			else if ( strValue <= RMAX && strValue >= RMIN ) // up-right
+			{
+				sentData.speedmotorLeft = 512;
+				sentData.speedmotorRight = -512;
+			}
+			else if ( strValue > LMIN && strValue < RMIN ) // up e basta
+			{
+				sentData.speedmotorLeft = 512;
+				sentData.speedmotorRight = 512;
+			}
+		}
+		if ( accValue <= DOWNMAX && accValue >= DOWNMIN ) // down range
+		{
+			if ( strValue <= LMIN && strValue >= LMAX ) // down-left
+			{
+				sentData.speedmotorLeft = 512;
+				sentData.speedmotorRight = -512;
+			}
+			else if ( strValue <= RMAX && strValue >= RMIN ) // down-right
+			{
+				sentData.speedmotorLeft = -512;
+				sentData.speedmotorRight = 512;
+			}
+			else if ( strValue > LMIN && strValue < RMIN ) // down e basta
+			{
+				sentData.speedmotorLeft = -512;
+				sentData.speedmotorRight = -512;
+			}
+		}
+	}
+
+	// Serial.println("speedleft");
+	// Serial.println(sentData.speedmotorLeft);
+	// Serial.println("\n");
+	// Serial.println("speedright");
+	// Serial.println(sentData.speedmotorRight);
+	// Serial.println("\n");
+
+	Serial.println("accvalue");
+	Serial.println(accValue);
 	Serial.println("\n");
-
+	Serial.println("strvalue");
+	Serial.println(strValue);
+	Serial.println("\n");
+	
 	// -------------------------------------------- //
 	esp_err_t result = -1;
 	result = esp_now_send(robotAddress, (uint8_t *) &sentData, sizeof(sentData));
 	if (result == ESP_OK) {
-		//Serial.println("Sent with success");
+		// Serial.println("Sent with success");
 	} else {
-		//Serial.println("Error sending the data");
+		// Serial.println("Error sending the data");
 	}
 	delay(10);
 	}
