@@ -30,6 +30,15 @@
 	packet_t sentData;
 	packet_t recData;
 
+	#define UPMAX	0
+	#define UPMIN	410
+	#define DOWNMIN	590
+	#define DOWNMAX	1023
+
+	#define LMAX	0
+	#define LMIN	410
+	#define RMIN	590
+	#define RMAX	1023
 
 	//---------------------------------------ESP_NOW Variables
 
@@ -73,6 +82,8 @@
 	//customisable vars
 	int analogRes = 10;
 	int analogReadMax = (1 << analogRes)-1;
+	int accValue;
+	int strValue;
 
 
 	//variables for the sketch
@@ -125,110 +136,73 @@
 	Led.ledOn();
 	}
 
+	void	fullForward( void )
+	{
+		sentData.speedmotorLeft = -512;
+		sentData.speedmotorRight = 512;
+	}
 
+	void	fullBack( void )
+	{
+		sentData.speedmotorLeft = 512;
+		sentData.speedmotorRight = -512;
+	}
+
+	void	fullStop( void )
+	{
+		sentData.speedmotorLeft = 0;
+		sentData.speedmotorRight = 0;
+	}
+	
+	void	fullturnLeft( void )
+	{
+		sentData.speedmotorLeft = -512;
+		sentData.speedmotorRight = -512;
+	}
+
+	void	fullturnRight( void )
+	{
+		sentData.speedmotorLeft = 512;
+		sentData.speedmotorRight = 512;
+	}
+
+	void	controlSpeed( int accValue, int strValue )
+	{
+		if ( strValue > 970 )
+		{
+			fullturnRight();
+			return ;
+		}
+		if ( strValue < 50 )
+		{
+			fullturnLeft();
+			return ;
+		}
+		if ( accValue >= UPMIN && accValue <= DOWNMIN )
+			fullStop();
+		else if ( accValue < UPMIN ) // up
+			fullForward();
+		else if ( accValue > DOWNMIN ) // down
+			fullBack();
+	}
 
 	void loop() {
 	//read pots values
-	int strValue = analogRead(steerPot); // left == 0 && right == 1023
+	strValue = analogRead(steerPot); // left == 0 && right == 1023
 	delay(3);
-	int accValue = analogRead(accPot); // up == 0 && down == 1023
+	accValue = analogRead(accPot); // up == 0 && down == 1023
 	delay(3);
-	int leverValue = analogRead(leverPot);
+	leverValue = analogRead(leverPot);
 	delay(3);
 	current_time = millis(); 
 	bool rightValue = !digitalRead(rightBtn);
 	bool leftValue = !digitalRead(leftBtn);
 	bool topValue = !digitalRead(topBtn);
 
-	// vvvv ----- YOUR AWESOME CODE HERE ----- vvvv //
+///////////////////////////////////////////////////////////////////
 
-	// -90 maxval ---- -50 minval  (acc)
-	// -50 maxval ---- 0 minval  (str)
-	// settiamo tutto a 90
-	
-	// int speedAcc = map(accValue, 0, 1023, -512, 512);
-	// int speedStr = map(strValue, 0, 1023, -512, 512);
-  
-	// sentData.speedmotorLeft = speedAcc - speedStr;
-	// sentData.speedmotorRight = speedAcc - speedStr;
-
-	// int speedUp = map( accValue, 0, 512, -512, 512 );
-	// int speedDown = map( accValue, 512, 1023, -512, 512 );
-	// int speedLeft = map( strValue, 0, 512, -512, 512 );
-	// int speedRight = map( strValue, 512, 1023, -512, 512 );
-
-	// sentData.speedmotorLeft = ((speedUp + speedDown) - (speedLeft + speedRight)); 
-	// sentData.speedmotorRight = ((speedUp + speedDown) - (speedLeft + speedRight));
-	#define UPMIN	462
-	#define UPMAX	0
-	#define DOWNMIN	562
-	#define DOWNMAX	1023
-
-	#define LMIN	462
-	#define LMAX	0
-	#define RMIN	562
-	#define RMAX	1023
-
-	// condition to manage the drift range
-	// where motors do nothing 
-	if ( accValue > UPMIN && accValue < DOWNMIN && strValue > LMIN && strValue < RMIN )
-	{
-		sentData.speedmotorLeft = 0;
-		sentData.speedmotorRight = 0;
-	}
-	else
-	{
-		if ( accValue <= UPMIN && accValue >= UPMAX ) // up range
-		{
-			if ( strValue <= LMIN && strValue >= LMAX ) // up-left
-			{
-				sentData.speedmotorLeft = -512;
-				sentData.speedmotorRight = 512;
-			}
-			else if ( strValue <= RMAX && strValue >= RMIN ) // up-right
-			{
-				sentData.speedmotorLeft = 512;
-				sentData.speedmotorRight = -512;
-			}
-			else if ( strValue > LMIN && strValue < RMIN ) // up e basta
-			{
-				sentData.speedmotorLeft = 512;
-				sentData.speedmotorRight = 512;
-			}
-		}
-		if ( accValue <= DOWNMAX && accValue >= DOWNMIN ) // down range
-		{
-			if ( strValue <= LMIN && strValue >= LMAX ) // down-left
-			{
-				sentData.speedmotorLeft = 512;
-				sentData.speedmotorRight = -512;
-			}
-			else if ( strValue <= RMAX && strValue >= RMIN ) // down-right
-			{
-				sentData.speedmotorLeft = -512;
-				sentData.speedmotorRight = 512;
-			}
-			else if ( strValue > LMIN && strValue < RMIN ) // down e basta
-			{
-				sentData.speedmotorLeft = -512;
-				sentData.speedmotorRight = -512;
-			}
-		}
-	}
-
-	// Serial.println("speedleft");
-	// Serial.println(sentData.speedmotorLeft);
-	// Serial.println("\n");
-	// Serial.println("speedright");
-	// Serial.println(sentData.speedmotorRight);
-	// Serial.println("\n");
-
-	Serial.println("accvalue");
-	Serial.println(accValue);
-	Serial.println("\n");
-	Serial.println("strvalue");
-	Serial.println(strValue);
-	Serial.println("\n");
+	// left e' al contrario
+	controlSpeed( accValue, strValue );
 	
 	// -------------------------------------------- //
 	esp_err_t result = -1;

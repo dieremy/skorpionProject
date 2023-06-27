@@ -88,10 +88,8 @@ int handle_blink(){
 
 void setup()
 {
-#ifdef DEBUG_PRINTS
   Serial.begin(115200);
   Serial.println("Ready.");
-#endif
   analogReadResolution(10);
   Led.init();
   delay(20);
@@ -138,6 +136,7 @@ void loop()
     motor1.setSpeed(0);
     motor2.setSpeed(0);
     motor3.setSpeed(0);
+    Serial.println("dioporco\n");
   }
   else
   {
@@ -146,9 +145,15 @@ void loop()
     // int leftSpeed = recData.speedmotorLeft;
     // int rightSpeed = recData.speedmotorRight;
 
-    motor1.setSpeed(recLpwm);
-    motor2.setSpeed(recRpwm);
+    motor1.setSpeed(recData.speedmotorLeft);
+    motor2.setSpeed(recData.speedmotorRight);
     motor3.setSpeed(0);
+
+    // Serial.println("recLeft");
+    // Serial.println(recData.speedmotorLeft);
+    // Serial.println("right");
+    // Serial.println(recData.speedmotorRight);
+    // Serial.println("3");
 
   // -------------------------------------------- //
   }
