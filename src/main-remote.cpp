@@ -71,10 +71,11 @@
 	const int accPot = 10;
 	const int leverPot = 8;
 	//const int trimPot = 39;
+	// left e' al contrario
 
 	const int rightBtn = 2;
-	const int leftBtn = 4;
-	const int topBtn = 5;
+	const int leftBtn = 5;
+	const int topBtn = 4;
 	//const int lowSwitch = 32;
 	//const int topSwitch = 25;
 	LedUtility Led(21);
@@ -112,6 +113,7 @@
 
 	//---------------------------------------ESP NOW setup
 	WiFi.mode(WIFI_STA);
+	esp_wifi_set_channel( 7, WIFI_SECOND_CHAN_NONE );
 	if (esp_now_init() != ESP_OK) {
 		Serial.println("Error initializing ESP-NOW");
 		return;
@@ -186,6 +188,53 @@
 			fullBack();
 	}
 
+	void	controlButton( bool rightValue, bool leftValue, bool topValue )
+	{
+		if ( rightValue == 1 && leftValue == 0 )
+		{
+			sentData.speedmotorLeft = 512;
+			sentData.speedmotorRight = 512;
+		}
+		if ( leftValue == 1 && rightValue == 0 )
+		{
+			sentData.speedmotorLeft = -512;
+			sentData.speedmotorRight = -512;
+		}
+		if ( topValue == 1 )
+			sentData.packetArg1 = topValue;
+		if ( topValue == 0 )
+			sentData.packetArg1 = topValue;
+		// else if ( leftValue == 1 && rightValue == 1 )
+		// {
+		// 	sentData.speedmotorLeft = -512; // up
+		// 	sentData.speedmotorRight = 512;
+
+		// 	delay(300);
+
+		// 	sentData.speedmotorLeft = 512; // right
+		// 	sentData.speedmotorRight = 512;
+
+		// 	delay(30);
+
+		// 	sentData.speedmotorLeft = -512; // up
+		// 	sentData.speedmotorRight = 512;
+
+		// 	delay(300);
+
+		// 	sentData.speedmotorLeft = -512; // left
+		// 	sentData.speedmotorRight = -512;
+		// }
+	}
+
+	void	controlLever( int leverValue )
+	{
+
+		// Serial.println( "\nleverValue" );
+		// Serial.println( leverValue );
+		// delay(300);
+		sentData.packetArg2 = leverValue;
+	}
+
 	void loop() {
 	//read pots values
 	strValue = analogRead(steerPot); // left == 0 && right == 1023
@@ -201,8 +250,15 @@
 
 ///////////////////////////////////////////////////////////////////
 
-	// left e' al contrario
 	controlSpeed( accValue, strValue );
+	controlButton( rightValue, leftValue, topValue );
+
+	leverValue = map(leverValue, 330, 680, 1023, 0);
+	leverValue = constrain(leverValue, 0, 1023);
+
+		Serial.println(leverValue);
+	sentData.packetArg2 = leverValue;
+	// controlLever( leverValue );
 	
 	// -------------------------------------------- //
 	esp_err_t result = -1;

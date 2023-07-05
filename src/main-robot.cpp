@@ -12,8 +12,7 @@ static const char *TAG = "MAIN";
 #define weapPot 7
 
 //------------ turn on generic serial printing
-//#define DEBUG_PRINTS
-
+// #define DEBUG_PRINTS
 
 #define MOTOR_A_IN1 8
 #define MOTOR_A_IN2 18
@@ -24,29 +23,29 @@ static const char *TAG = "MAIN";
 #define MOTOR_C_IN1 4
 #define MOTOR_C_IN2 5
 
+// positivo arma sale
+// negativo arma scende
 
-
-//RIGHT
-MotorControl motor1 = MotorControl(MOTOR_B_IN1, MOTOR_B_IN2); 
-//LEFT
+// RIGHT
+MotorControl motor1 = MotorControl(MOTOR_B_IN1, MOTOR_B_IN2);
+// LEFT
 MotorControl motor2 = MotorControl(MOTOR_A_IN1, MOTOR_A_IN2);
-//WPN
+// WPN
 MotorControl motor3 = MotorControl(MOTOR_C_IN1, MOTOR_C_IN2);
 
 BatteryMonitor Battery = BatteryMonitor();
 
 LedUtility Led = LedUtility();
 
-typedef struct {
-  int16_t speedmotorLeft;
-  int16_t speedmotorRight;
-  int16_t packetArg1;
-  int16_t packetArg2;
-  int16_t packetArg3;
-}
-packet_t;
+typedef struct
+{
+	int16_t speedmotorLeft;
+	int16_t speedmotorRight;
+	int16_t packetArg1;
+	int16_t packetArg2;
+	int16_t packetArg3;
+} packet_t;
 packet_t recData;
-
 
 bool failsafe = false;
 unsigned long failsafeMaxMillis = 400;
@@ -58,105 +57,137 @@ int recArg1 = 0;
 int recArg2 = 0;
 int recArg3 = 0;
 
-
 // Callback when data is received
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
 {
-  memcpy(&recData, incomingData, sizeof(recData));
-  recLpwm = recData.speedmotorLeft;
-  recRpwm = recData.speedmotorRight;
-  recArg1 = recData.packetArg1;
-  recArg2 = recData.packetArg2;
-  recArg3 = recData.packetArg3;
-  lastPacketMillis = millis();
-  failsafe = false;
+	memcpy(&recData, incomingData, sizeof(recData));
+	recLpwm = recData.speedmotorLeft;
+	recRpwm = recData.speedmotorRight;
+	recArg1 = recData.packetArg1;
+	recArg2 = recData.packetArg2;
+	recArg3 = recData.packetArg3;
+	lastPacketMillis = millis();
+	failsafe = false;
 }
 
-int handle_blink(){
-  if(Battery.isLow()){
-    Led.setBlinks(1,1000);
-    return 1;
-  }
-  if (failsafe){
-    Led.setBlinks(2,500);
-    return -1;
-  }
-  Led.setBlinks(0);
-  Led.ledOn();
-  return 0;
+int handle_blink()
+{
+	if (Battery.isLow())
+	{
+		Led.setBlinks(1, 1000);
+		return 1;
+	}
+	if (failsafe)
+	{
+		Led.setBlinks(2, 500);
+		return -1;
+	}
+	Led.setBlinks(0);
+	Led.ledOn();
+	return 0;
 }
 
 void setup()
 {
-  Serial.begin(115200);
-  Serial.println("Ready.");
-  analogReadResolution(10);
-  Led.init();
-  delay(20);
-  Led.setBlinks(1,150);
-  delay(2000);
-  Battery.init();
-  delay(20);
+	Serial.begin(115200);
+	Serial.println("Ready.");
+	analogReadResolution(10);
+	Led.init();
+	delay(20);
+	Led.setBlinks(1, 150);
+	delay(2000);
+	Battery.init();
+	delay(20);
 
+	analogSetAttenuation(ADC_11db);
+	motor1.setSpeed(0);
+	motor2.setSpeed(0);
+	motor3.setSpeed(0);
+	delay(500);
 
-  analogSetAttenuation(ADC_11db);
-  motor1.setSpeed(0);
-  motor2.setSpeed(0);
-  motor3.setSpeed(0);
-  delay(500);
+	WiFi.mode(WIFI_STA);
+	esp_wifi_set_channel(7, WIFI_SECOND_CHAN_NONE);
+	if (esp_wifi_set_mac(WIFI_IF_STA, &robotAddress[0]) != ESP_OK)
+	{
+		Serial.println("Error changing mac");
+		return;
+	}
+	Serial.println(WiFi.macAddress());
+	if (esp_now_init() != ESP_OK)
+	{
+		Serial.println("Error initializing ESP-NOW");
+		return;
+	}
+	esp_now_register_recv_cb(OnDataRecv);
+	Led.setBlinks(0);
+	Led.ledOn();
+}
 
-  WiFi.mode(WIFI_STA);
-  if (esp_wifi_set_mac(WIFI_IF_STA, &robotAddress[0]) != ESP_OK)
-  {
-    Serial.println("Error changing mac");
-    return;
-  }
-  Serial.println(WiFi.macAddress());
-  if (esp_now_init() != ESP_OK)
-  {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-  esp_now_register_recv_cb(OnDataRecv);
-  Led.setBlinks(0);
-  Led.ledOn();
+#define WPDOWN 825
+#define WPUP 0
+
+float kp = 4.0;
+
+void controlWeapon(int target)
+{
+	target = map(target, 0, 1023, 0, 820);
+	int level = analogRead(weapPot);
+	Serial.print("target: ");
+	Serial.print( target );
+	Serial.print("\tlevel: ");
+	Serial.println(level);
+	int pwn = (level - target) * kp;
+	pwn = constrain(pwn, -512, 512);
+	motor3.setSpeed( pwn );
 }
 
 void loop()
 {
 
-  unsigned long current_time = millis();
-  if (current_time - lastPacketMillis > failsafeMaxMillis)
-  {
-    failsafe = true;
-  }
-  handle_blink();
-  if (failsafe)
-  {
-    motor1.setSpeed(0);
-    motor2.setSpeed(0);
-    motor3.setSpeed(0);
-    Serial.println("dioporco\n");
-  }
-  else
-  {
-  // vvvv ----- YOUR AWESOME CODE HERE ----- vvvv //
+	unsigned long current_time = millis();
+	if (current_time - lastPacketMillis > failsafeMaxMillis)
+	{
+		failsafe = true;
+	}
+	handle_blink();
+	if (failsafe)
+	{
+		motor1.setSpeed(0);
+		motor2.setSpeed(0);
+		motor3.setSpeed(0);
+	}
+	else
+	{
+		// vvvv ----- YOUR AWESOME CODE HERE ----- vvvv //
 
-    // int leftSpeed = recData.speedmotorLeft;
-    // int rightSpeed = recData.speedmotorRight;
+		// int speedLevel = controlWeap( wpn, recArg1 );
 
-    motor1.setSpeed(recData.speedmotorLeft);
-    motor2.setSpeed(recData.speedmotorRight);
-    motor3.setSpeed(0);
+		motor1.setSpeed(recLpwm);
+		motor2.setSpeed(recRpwm);
 
-    // Serial.println("recLeft");
-    // Serial.println(recData.speedmotorLeft);
-    // Serial.println("right");
-    // Serial.println(recData.speedmotorRight);
-    // Serial.println("3");
+		controlWeapon( recArg2 );
+		// Serial.print( "level: " );
+		// Serial.println( level );
 
-  // -------------------------------------------- //
-  }
-  delay(2);
+		// motor3.setSpeed(200);
+
+		// Serial.println("speedLevel");
+		// Serial.println(speedLevel);
+
+		// Serial.println("recData.packetArg1");
+		// Serial.println(recData.packetArg1);
+		// delay(255);
+
+		// Serial.println("\n");
+		// delay(255);
+
+		// Serial.println("recLeft");
+		// Serial.println(recData.speedmotorLeft);
+		// Serial.println("right");
+		// Serial.println(recData.speedmotorRight);
+
+		// -------------------------------------------- //
+	}
+	delay(2);
 }
 #endif
