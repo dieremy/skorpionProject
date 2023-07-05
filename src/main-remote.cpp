@@ -113,7 +113,7 @@
 
 	//---------------------------------------ESP NOW setup
 	WiFi.mode(WIFI_STA);
-	esp_wifi_set_channel( 7, WIFI_SECOND_CHAN_NONE );
+	esp_wifi_set_channel( 1, WIFI_SECOND_CHAN_NONE );
 	if (esp_now_init() != ESP_OK) {
 		Serial.println("Error initializing ESP-NOW");
 		return;

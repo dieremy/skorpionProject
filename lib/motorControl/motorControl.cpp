@@ -1,7 +1,7 @@
 #include "motorControl.h"
 uint16_t MotorControl::_free_pwm_unit=0;
 uint16_t MotorControl::_free_pwm_timer=0;
-uint16_t MotorControl::_pwm_freq=4000;
+uint16_t MotorControl::_pwm_freq=3000;
 
 MotorControl::MotorControl(uint16_t pin_A, uint16_t pin_B, int start_pwm, int max_resolution) {
   _pin_A = pin_A;
