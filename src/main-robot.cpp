@@ -106,7 +106,7 @@ void setup()
 	delay(500);
 
 	WiFi.mode(WIFI_STA);
-	esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+	esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE); // channel 1 even for the remote
 	if (esp_wifi_set_mac(WIFI_IF_STA, &robotAddress[0]) != ESP_OK)
 	{
 		Serial.println("Error changing mac");
@@ -123,22 +123,22 @@ void setup()
 	Led.ledOn();
 }
 
-#define WPDOWN 825
-#define WPUP 0
+#define WPDOWN	825
+#define WPUP	0
 
 float kp = 3.1;
 float kd = 15.0;
-float ki = 0.10;
+float ki = 0.12;
 float prev_err = 0.0;
 int	  level;
 float err;
 float pwn;
 float integral = 0.0;
 
-void controlWeapon(int target)
+void controlWeapon( int target )
 {
-	level = analogRead(weapPot);
-	target = map(target, 0, 1023, 0, 830);
+	level = analogRead( weapPot );
+	target = map( target, 0, 1023, 0, 830 );
 		
 	err = ( level - target );
 	if ( abs( err ) < 10 )
@@ -155,41 +155,29 @@ void controlWeapon(int target)
 	else
 		motor3.setSpeed( pwn );
 	prev_err = err;
-
-	// Serial.print("err: ");
-	// Serial.print( err );
-	// Serial.print("\tderiv: ");
-	// Serial.print( deriv );
-	// Serial.print("\tintegral: ");
-	// Serial.print( integral );
-	// Serial.print("\tlevel: ");
-	// Serial.print( level );
-	// Serial.print("\tpwn: ");
-	// Serial.println( pwn );
 }
 
-unsigned long actualTime;
+unsigned long prevTime;
 unsigned long newTime;
-unsigned long limit = 10;
 
-// positivo arma sale
-// negativo arma scende
+boolean safe = false;
 
-void	comboSting( int sting )
+void	comboSting( int sting, int target )
 {
+	prevTime = millis() - newTime;
+	if ( prevTime >= 300 && safe )
+	{
+		motor3.setSpeed( -512 );
+		safe = false;
+	}
+
 	if ( sting == 1 )
 	{
 		motor3.setSpeed( 512 );
-		delay(150);
-		motor3.setSpeed( -512 );
-
-		delay(80);
-		return ;
+		newTime = millis();
+		delay( 200 );
+		safe = true;	
 	}
-		// actualTime = millis();
-		// if ( ( actualTime - millis() ) > 10 )
-	// if ( sting == 0 )
-	// 	motor3.setSpeed( 0 );
 }
 
 void loop()
@@ -211,32 +199,14 @@ void loop()
 	{
 		// vvvv ----- YOUR AWESOME CODE HERE ----- vvvv //
 
-		// int speedLevel = controlWeap( wpn, recArg1 );
+		// recarg1 = topValue   ---> recTopBtn
+		// recarg2 = leverValue ---> recLever
+		motor1.setSpeed( recLpwm );
+		motor2.setSpeed( recRpwm );
+		motor3.setSpeed( recArg2 ); //////////// test this thing from remote
 
-		motor1.setSpeed(recLpwm);
-		motor2.setSpeed(recRpwm);
-
-		comboSting( recArg1 );
+		// comboSting( recArg1, recArg2 );
 		controlWeapon( recArg2 );
-		// Serial.print( "level: " );
-		// Serial.println( level );
-
-		// motor3.setSpeed(200);
-
-		// Serial.println("speedLevel");
-		// Serial.println(speedLevel);
-
-		// Serial.println("recData.packetArg1");
-		// Serial.println(recData.packetArg1);
-		// delay(255);
-
-		// Serial.println("\n");
-		// delay(255);
-
-		// Serial.println("recLeft");
-		// Serial.println(recData.speedmotorLeft);
-		// Serial.println("right");
-		// Serial.println(recData.speedmotorRight);
 
 		// -------------------------------------------- //
 	}
