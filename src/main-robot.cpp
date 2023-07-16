@@ -17,8 +17,8 @@ static const char *TAG = "MAIN";
 #define MOTOR_A_IN1 8	// 8
 #define MOTOR_A_IN2 18	// 18
 
-#define MOTOR_B_IN1 17	// 16
-#define MOTOR_B_IN2 16	// 17
+#define MOTOR_B_IN1 16	// 16
+#define MOTOR_B_IN2 17	// 17
 
 #define MOTOR_C_IN1 5
 #define MOTOR_C_IN2 4
@@ -27,9 +27,9 @@ static const char *TAG = "MAIN";
 // negativo arma scende
 
 // RIGHT
-MotorControl motor1 = MotorControl(MOTOR_B_IN1, MOTOR_B_IN2);
+MotorControl motor1 = MotorControl(MOTOR_A_IN1, MOTOR_A_IN2);
 // LEFT
-MotorControl motor2 = MotorControl(MOTOR_A_IN1, MOTOR_A_IN2);
+MotorControl motor2 = MotorControl(MOTOR_B_IN1, MOTOR_B_IN2);
 // WPN
 MotorControl motor3 = MotorControl(MOTOR_C_IN1, MOTOR_C_IN2,180);  // 300
 
@@ -157,28 +157,27 @@ void controlWeapon( int target )
 	prev_err = err;
 }
 
-unsigned long prevTime;
-unsigned long newTime;
+// unsigned long d1;
+// unsigned long t1;
 
-boolean safe = false;
+// boolean safe = false;
 
-void	comboSting( int sting, int target )
-{
-	prevTime = millis() - newTime;
-	if ( prevTime >= 300 && safe )
-	{
-		motor3.setSpeed( -512 );
-		safe = false;
-	}
+// void	comboSting( int sting )
+// {
+// 	d1 = millis() - t1;
+// 	if ( d1 >= 300 && safe )
+// 	{
+// 		motor3.setSpeed( -512 );
+// 		safe = false;
+// 	}
 
-	if ( sting == 1 )
-	{
-		motor3.setSpeed( 512 );
-		newTime = millis();
-		delay( 200 );
-		safe = true;	
-	}
-}
+// 	if ( sting == 1 )
+// 	{
+// 		motor3.setSpeed( 512 );
+// 		t1 = millis();
+// 		safe = true;	
+// 	}
+// }
 
 void loop()
 {
@@ -203,10 +202,11 @@ void loop()
 		// recarg2 = leverValue ---> recLever
 		motor1.setSpeed( recLpwm );
 		motor2.setSpeed( recRpwm );
-		motor3.setSpeed( recArg2 ); //////////// test this thing from remote
 
-		// comboSting( recArg1, recArg2 );
 		controlWeapon( recArg2 );
+		// comboSting( recArg1 );
+
+		// motor3.setSpeed( recArg2 ); //////////// test this thing from remote
 
 		// -------------------------------------------- //
 	}

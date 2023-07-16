@@ -29,16 +29,6 @@ typedef struct
 packet_t sentData;
 packet_t recData;
 
-#define UPMAX 0
-#define UPMIN 410
-#define DOWNMIN 590
-#define DOWNMAX 1023
-
-#define LMAX 0
-#define LMIN 410
-#define RMIN 590
-#define RMAX 1023
-
 //---------------------------------------ESP_NOW Variables
 
 String success;
@@ -139,13 +129,19 @@ void setup()
 
 void fullForward(void)
 {
-	sentData.speedmotorLeft = -512;
+	sentData.speedmotorLeft = 512;
 	sentData.speedmotorRight = 512;
+}
+
+void fullMidForward(void)
+{
+	sentData.speedmotorLeft = 260;
+	sentData.speedmotorRight = 260;
 }
 
 void fullBack(void)
 {
-	sentData.speedmotorLeft = 512;
+	sentData.speedmotorLeft = -512;
 	sentData.speedmotorRight = -512;
 }
 
@@ -157,73 +153,138 @@ void fullStop(void)
 
 void fullturnLeft(void)
 {
-	sentData.speedmotorLeft = -512;
-	sentData.speedmotorRight = -512;
+	sentData.speedmotorLeft = 0; // -512
+	sentData.speedmotorRight = 512;
 }
 
 void fullturnRight(void)
 {
 	sentData.speedmotorLeft = 512;
-	sentData.speedmotorRight = 512;
+	sentData.speedmotorRight = 0; // 512
 }
 
-void controlSpeed(int accValue, int strValue)
+#define UPMAX 0
+#define UPMIN 410
+#define DOWNMIN 590
+#define DOWNMAX 1023
+
+#define LMAX 0
+#define LMIN 410
+#define RMIN 590
+#define RMAX 1023
+
+// void	controlDirection( int accValue, int strValue )
+// {
+// 	if ( strValue > 970 && accValue < UPMIN ) // right
+// 	{
+// 		fullturnRight();
+// 		return;
+// 	}
+// 	if ( strValue < 50 && accValue < UPMIN ) // left
+// 	{
+// 		fullturnLeft();
+// 		return;
+// 	}
+// 	if ( strValue > 970 && accValue > DOWNMIN )
+// 	{
+// 		sentData.speedmotorLeft = 0;
+// 		sentData.speedmotorRight = -512;
+// 		return;
+// 	}
+// 	if ( strValue < 50 && accValue > DOWNMIN )
+// 	{
+// 		sentData.speedmotorLeft = -512;
+// 		sentData.speedmotorRight = 0;
+// 		return;
+// 	}
+// }
+
+// void	controlSpeed( int accValue, int strValue )
+// {
+// 	controlDirection( accValue, strValue );
+// 	if ( accValue >= UPMIN && accValue <= DOWNMIN )
+// 		fullStop();
+// 	else if ( accValue < UPMIN && accValue > ( UPMIN / 2 ) )
+// 		fullMidForward();
+// 	else if ( accValue < ( UPMIN / 2 ) && UPMIN > 0 ) // up // UPMIN
+// 		fullForward();
+// 	else if ( accValue > DOWNMIN ) // down
+// 		fullBack();
+// }
+
+void controlSpeed( int accValue, int strValue )
 {
-	if (strValue > 970)
+	if ( strValue > 970 ) // right
 	{
 		fullturnRight();
 		return;
 	}
-	if (strValue < 50)
+	if ( strValue < 50 ) // left
 	{
 		fullturnLeft();
 		return;
 	}
-	if (accValue >= UPMIN && accValue <= DOWNMIN)
+	if ( accValue >= UPMIN && accValue <= DOWNMIN )
 		fullStop();
-	else if (accValue < UPMIN) // up
+	else if ( accValue < UPMIN && accValue > ( UPMIN / 2 ) )
+		fullMidForward();
+	else if ( accValue < ( UPMIN / 2 ) && UPMIN > 0 ) // up // UPMIN
 		fullForward();
-	else if (accValue > DOWNMIN) // down
+	else if ( accValue > DOWNMIN ) // down
 		fullBack();
 }
 
-unsigned long prevTime;
-unsigned long newTime;
-
-boolean safe = false;
-
 void controlButton(bool rightValue, bool leftValue, bool topValue)
 {
-	prevTime = millis() - newTime;
-	if ( prevTime >= 300 && safe ) ////////// check the ( && safe )
-	{
-		// motor3.setSpeed( -512 );
-		sentData.packetArg1 = -512;
-		safe = false;
-	}
-	if ( topValue )
-	{
-		// motor3.setSpeed( 512 );
-		sentData.packetArg1 = 512;
-		newTime = millis();
-		delay(200);
-		safe = true;
-	}
-	if ( rightValue )
+	if ( leftValue && rightValue )
 	{
 		sentData.speedmotorLeft = 512;
 		sentData.speedmotorRight = 512;
 	}
-	if ( leftValue )
+	if ( rightValue && !leftValue )
 	{
-		sentData.speedmotorLeft = -512;
+		sentData.speedmotorLeft = 512;
 		sentData.speedmotorRight = -512;
 	}
-	// if ( topValue == 1 )
-	// 	sentData.packetArg1 = topValue;
-	// if ( topValue == 0 )
-	// 	sentData.packetArg1 = topValue;
+	if ( leftValue && !rightValue )
+	{
+		sentData.speedmotorLeft = -512;
+		sentData.speedmotorRight = 512;
+	}
 }
+
+unsigned long t1;
+unsigned long d1;
+
+boolean safe = false;
+boolean timestamp = false;
+
+void	comboSting( bool topValue )
+{
+	d1 = millis();
+
+	if ( ( d1 - t1 ) >= 200 && safe )
+	{
+		sentData.packetArg2 = 1023;
+		safe = false;
+		timestamp = false;
+	}
+
+	if ( topValue )
+		safe = true;
+
+	if ( safe )
+	{
+		if ( !timestamp )
+		{
+			t1 = millis();
+			timestamp = true;
+		}
+		sentData.packetArg2 = 100;
+	}
+}
+
+
 
 void loop()
 {
@@ -248,8 +309,12 @@ void loop()
 	leverValue = constrain(leverValue, 0, 1023);
 	sentData.packetArg2 = leverValue;
 
-	///////////////////// check if it is better to manage top value
-	///////////////////// in another function after the map and constrain
+	comboSting( topValue );
+
+	Serial.print( "sLEFT " );
+	Serial.print( sentData.speedmotorLeft );
+	Serial.print( "\tsRIGHT " );
+	Serial.println( sentData.speedmotorRight );
 
 	// -------------------------------------------- //
 	esp_err_t result = -1;
